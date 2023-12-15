@@ -1,0 +1,162 @@
+{
+        "foundInstanceId": "00000000-0000-0000-0000-000000000000",
+        "judgeId": "00000000-0000-0000-0000-000000000000",
+        "caseTypeName": "",
+        "lastFinishedInstance": {
+          "court": "АС Белгородской области",
+          "courtTag": "BELGOROD",
+          "instanceLevel": 1,
+          "finishState": "Active",
+          "incomingDate": "2023-11-09T00:00:00",
+          "judgeName": "Кретова Л. А.",
+          "mainJudgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+          "judges": [
+            {
+              "id": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+              "role": "MainJudge"
+            }
+          ]
+        },
+        "lastInstance": {
+          "court": "АС Белгородской области",
+          "courtTag": "BELGOROD",
+          "instanceLevel": 1,
+          "finishState": "Active",
+          "incomingDate": "2023-11-09T00:00:00",
+          "judgeName": "Кретова Л. А.",
+          "mainJudgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+          "judges": [
+            {
+              "id": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+              "role": "MainJudge"
+            }
+          ]
+        },
+        "status": "Рассматривается в первой инстанции",
+        "caseTypeMCode": "Г",
+        "isMonitored": false,
+        "isFavorite": false,
+        "updatesCount": 0,
+        "isFlBankruptcy": false,
+        "totalSidesCount": 2,
+        "shardName": "ARBITR_88",
+        "caseId": "886a15b0-3c21-4212-abde-4c4b0ef54d5a",
+        "caseNumber": "А08-11723/2023",
+        "startDate": "2023-11-09T00:00:00",
+        "caseType": "Civil",
+        "isSimpleJustice": false,
+        "instancesInternal": [
+          {
+            "court": "АС Белгородской области",
+            "courtTag": "BELGOROD",
+            "instanceLevel": 1,
+            "finishState": "Active",
+            "incomingDate": "2023-11-09T00:00:00",
+            "judgeName": "Кретова Л. А.",
+            "mainJudgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+            "judges": [
+              {
+                "id": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+                "role": "MainJudge"
+              }
+            ]
+          }
+        ],
+        "instances": [
+          {
+            "court": "АС Белгородской области",
+            "courtTag": "BELGOROD",
+            "instanceLevel": 1,
+            "finishState": "Active",
+            "incomingDate": "2023-11-09T00:00:00",
+            "judgeName": "Кретова Л. А.",
+            "mainJudgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4"
+          }
+        ],
+        "firstInstance": {
+          "court": "АС Белгородской области",
+          "courtTag": "BELGOROD",
+          "instanceLevel": 1,
+          "finishState": "Active",
+          "incomingDate": "2023-11-09T00:00:00",
+          "judgeName": "Кретова Л. А.",
+          "mainJudgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+          "judges": [
+            {
+              "id": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+              "role": "MainJudge"
+            }
+          ]
+        },
+        "isFinished": false,
+        "sides": [
+          {
+            "type": 0,
+            "typeEnum": "Plaintiff",
+            "nSideType": 1,
+            "nSideTypeEnum": "Plaintiff",
+            "sideRegistrationDate": "2023-11-09T00:00:00",
+            "fakeId": 3141918,
+            "isBranch": false,
+            "ogrn": "1153122000668",
+            "inn": "3122002000",
+            "okpo": "22292960",
+            "name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ АГРОФИРМА \"БЕЛАГРО\"",
+            "shortName": "ООО АГРОФИРМА \"БЕЛАГРО\"",
+            "address": "309850, БЕЛГОРОДСКАЯ ОБЛАСТЬ, Г АЛЕКСЕЕВКА, УЛ НИКОЛЬСКАЯ, Д. 43",
+            "legalStatus": "Organization"
+          },
+          {
+            "type": 1,
+            "typeEnum": "Respondent",
+            "nSideType": 12,
+            "nSideTypeEnum": "OtherRespondent",
+            "sideRegistrationDate": "2023-11-09T00:00:00",
+            "fakeId": 3141919,
+            "isBranch": false,
+            "ogrn": "1123123009866",
+            "inn": "3123301839",
+            "okpo": "38926303",
+            "name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"КОРМОВАЯ КОМПАНИЯ \"ЗЕЛЕНАЯ ДОЛИНА\"",
+            "shortName": "ООО \"КОРМОВАЯ КОМПАНИЯ \"ЗЕЛЕНАЯ ДОЛИНА\"",
+            "address": "309263, БЕЛГОРОДСКАЯ ОБЛАСТЬ, С КУПИНО, УЛ МОЛОДЕЖНАЯ, ЗД. 5А",
+            "legalStatus": "Organization"
+          }
+        ],
+        "lastEvents": [
+          {
+            "id": "2c9f8897-e6e2-416a-b515-90e2334d7cfa",
+            "instanceNumber": "А08-11723/2023",
+            "needJudges": false,
+            "description": "Ходатайство об ознакомлении с материалами дела",
+            "date": "2023-11-29T00:00:00",
+            "appealDescription": "",
+            "isResolution": false,
+            "court": "АС Белгородской области",
+            "courtTag": "BELGOROD",
+            "instanceLevel": 1
+          }
+        ],
+        "nextEvent": {
+          "date": "2024-01-15T11:30:00",
+          "court": "АС Белгородской области",
+          "instanceLevel": 1,
+          "judge": "Кретова Л. А.",
+          "judgeId": "c27dfa26-9ef9-4db1-acd1-9325ae8d02c4",
+          "instanceId": "00000000-0000-0000-0000-000000000000",
+          "instanceNumber": "А08-11723/2023",
+          "description": "Судебное заседание, Зал №8",
+          "documentId": "7733f6c5-dbdd-422a-a3a8-528c355faad3",
+          "sessionId": "68d521a4-e1dc-4906-a0cc-2dbcf14a6246",
+          "iWillGo": false
+        },
+        "caseCategory": "О неисполнении или ненадлежащем исполнении обязательств по договорам возмездного оказания услуг",
+        "caseCategoryId": "27051a50-f5c1-4734-a54a-de58dfa66fdf",
+        "claimSum": 5809844.67,
+        "comment": "ООО АГРОФИРМА \"БЕЛАГРО\" против ООО \"КОРМОВАЯ КОМПАНИЯ \"ЗЕЛЕНАЯ ДОЛИНА\". Экономические споры по гражданским правоотношениям. О неисполнении или ненадлежащем исполнении обязательств по договорам возмездного оказания услуг.",
+        "inFolders": [],
+        "caseResult": -1,
+        "caseResultEnum": "Unknown",
+        "caseResultString": "В производстве",
+        "caseDuration": 35
+      }
