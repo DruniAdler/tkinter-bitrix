@@ -25,8 +25,8 @@ class Side:
 
 @dataclasses.dataclass
 class Case:
-    applicant: Side
-    defendant: Side
+    plaintiff: Side
+    respondent: Side
     court: str
     url: str
     id: str
@@ -114,5 +114,19 @@ class Casebook:
             serialized = json.loads(response.data)
             cases.append(serialized['result']['items'])
         for case in cases:
+            plaintiff = Side(
+                    name=case['sides'][0]['name'] if case['sides'][0]['typeEnum'] == 'Plaintiff' else case['sides'][1]['name'],
+                    inn=,
+                    ogrn=,
+                )
+            respondent = Side(
+                name=,
+                inn=,
+                ogrn=,
+            )
+            case_ = Case(
+                plaintiff=plaintiff,
+                respondent=
+            )
             pass
         return cases
