@@ -6,9 +6,7 @@ import time
 import urllib3
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 @dataclasses.dataclass
@@ -29,9 +27,9 @@ class Case:
     respondent: Side
     court: str
     url: str
-    id: str
+    number: str
     reg_date: datetime.date
-    _type: str
+    _type: dict
 
 
 class Casebook:
@@ -105,6 +103,7 @@ class Casebook:
         serialized = json.loads(response.data)
         pages = serialized['result']['pagesCount']
         cases = []
+        result = []
         for i in range(1, pages + 1):
             query = f'{filter_}, "page":{i}, "count":30,"isNeedStat":true'
             response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
@@ -112,21 +111,43 @@ class Casebook:
                                                 headers=self.headers)
 
             serialized = json.loads(response.data)
-            cases.append(serialized['result']['items'])
+            for case in serialized['result']['items']:
+                cases.append(case)
         for case in cases:
-            plaintiff = Side(
-                    name=case['sides'][0]['name'] if case['sides'][0]['typeEnum'] == 'Plaintiff' else case['sides'][1]['name'],
-                    inn=,
-                    ogrn=,
+            for side in case['sides']:
+                have_stopword = False
+                from stopwords import stopwords
+                for stopword in stopwords:
+                    if stopword.upper() in side['name'].upper():
+                        continue
+                if side['typeEnum'] == "Plaintiff":
+                    plaintiff = Side(
+                            name=side['name'],
+                            inn=side['inn'],
+                            ogrn=side['ogrn'],
+                        )
+                elif side['typeEnum'] == "Respondent":
+                    respondent = Side(
+                        name=side['name'],
+                        inn=side['inn'],
+                        ogrn=side['ogrn'],
+                    )
+            if have_stopword:
+                continue
+            else:
+                case_ = Case(
+                    plaintiff=plaintiff,
+                    respondent=respondent,
+                    court=case['instancesInternal'][0]['court'],
+                    url=f'https://casebook.ru/card/case/{case["caseId"]}',
+                    number=case['caseNumber'],
+                    reg_date=datetime.datetime.fromisoformat(case['startDate']).date(),
+                    _type={
+                        "caseTypeM": case['caseTypeMCode'],
+                        "caseTypeENG": case['caseType']
+                    }
                 )
-            respondent = Side(
-                name=,
-                inn=,
-                ogrn=,
-            )
-            case_ = Case(
-                plaintiff=plaintiff,
-                respondent=
-            )
-            pass
+                result.append(case_)
+        for i in result:
+            print(i)
         return cases
