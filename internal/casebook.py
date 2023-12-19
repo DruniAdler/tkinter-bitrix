@@ -30,6 +30,7 @@ class Case:
     number: str
     reg_date: datetime.date
     _type: dict
+    contacts_info: str | None = None
 
 
 class Casebook:
@@ -58,6 +59,9 @@ class Casebook:
         self.get_filters()
 
     def headless_auth(self, login: str, password: str):
+        if not login:
+            login = self.login
+            password = self.password
         self.selenium_driver.get("https://casebook.ru/login")
         email_field = self.selenium_driver.find_element(By.NAME, "UserName")
         email_field.clear()
@@ -87,7 +91,11 @@ class Casebook:
     def get_filters(self):
         response = self.http_client.request('GET', 'https://casebook.ru/ms/UserData/SavedSearch/List',
                                             headers=self.headers)
-        serialized = json.loads(response.data)
+        try:
+            serialized = json.loads(response.data)
+        except json.decoder.JSONDecodeError:
+            time.sleep(5)
+            self.headless_auth()
         self.filters = [
             {"name": filter_['name'], "id": filter_["id"], "filter": json.loads(filter_['serializedRequest'])}
             for filter_ in serialized['result']]
@@ -95,7 +103,7 @@ class Casebook:
     def get_info_about_case(self):
         pass
 
-    def get_cases(self, filter_):
+    def get_cases(self, filter_, timedelta):
         query = f'{filter_}, "page":1,"count":30,"isNeedStat":true'
         response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
                                             body=query.replace('None', 'null'),
@@ -132,7 +140,8 @@ class Casebook:
                         inn=side['inn'],
                         ogrn=side['ogrn'],
                     )
-            if have_stopword:
+                date = datetime.datetime.fromisoformat(case['startDate']).date()
+            if have_stopword or (datetime.date.today() - date).days > timedelta:
                 continue
             else:
                 case_ = Case(
@@ -146,8 +155,8 @@ class Casebook:
                         "caseTypeM": case['caseTypeMCode'],
                         "caseTypeENG": case['caseType']
                     }
+
                 )
                 result.append(case_)
-        for i in result:
-            print(i)
-        return cases
+        print(result)
+        return result

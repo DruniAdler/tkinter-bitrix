@@ -7,6 +7,9 @@ import customtkinter
 import tkinter
 import tkinter.messagebox
 
+from supabase import create_client
+
+from internal.bitrix import BitrixConnect
 from internal.casebook import CaseBookCache, Casebook
 
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
@@ -28,11 +31,8 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
+        self.selected_timedelta = 1
         self.work = False
-        if os.path.isfile('cache.json'):
-            with os.open('cache.json', os.O_RDWR) as f:
-                cache = json.load(f)
-
 
         # configure window
         self.title("Битрикс Парсер")
@@ -51,6 +51,11 @@ class App(customtkinter.CTk):
         self.textbox.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.log('Старт приложения')
 
+        self.supabase = create_client(supabase_url='https://nebvfbgddtwwyesuclkg.supabase.co',
+                                      supabase_key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYnZmYmdkZHR3d3llc3VjbGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI5MTkxOTQsImV4cCI6MjAxODQ5NTE5NH0.3d-TbkiCuNYDF9FZYnuE24RW7txH2fBcjA9aJK3jOwI')
+
+        creds = self.supabase.table('credentionals').select('*').execute()
+        print(creds)
         # prod
         # casebook = Casebook(cache=cache.casebook_cache)
         # test
@@ -61,6 +66,8 @@ class App(customtkinter.CTk):
 
         self.log("Авторизация Casebook успешно...")
 
+        self.bitrix = BitrixConnect()
+
         self.config_group = customtkinter.CTkFrame(self, height=50)
         self.config_group.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
@@ -69,9 +76,9 @@ class App(customtkinter.CTk):
 
         self.period_label = customtkinter.CTkLabel(self.config_group, text="Период сканирования")
         self.period_label.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
-
         self.update_period = customtkinter.CTkOptionMenu(self.config_group, height=10,
-                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц'])
+                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц', '<!тест!>'],
+                                                         command=self.change_time_delta)
         self.update_period.grid(row=2, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
         self.data_set = customtkinter.CTkLabel(self.config_group, text="Источник данных")
@@ -91,6 +98,21 @@ class App(customtkinter.CTk):
         self.selected_filter = list(filter(lambda x: x.get('name') == choice, self.casebook.filters))[0]
         print(self.selected_filter)
 
+    def change_time_delta(self, choice):
+        if choice == '1 день':
+            self.selected_timedelta = 1
+        elif choice == '3 дня':
+            self.selected_timedelta = 3
+        elif choice == '1 неделя':
+            self.selected_timedelta = 7
+        elif choice == '2 недели':
+            self.selected_timedelta = 14
+        elif choice == 'месяц':
+            self.selected_timedelta = 30
+        elif choice == '<!тест!>':
+            self.selected_timedelta = (datetime.now().date() - datetime.strptime("09-11-2023", '%d-%m-%Y').date()).days
+            self.log("[ВНИМАНИЕ] Выбрана тестовая выборка...")
+
     def start_stop(self):
         if self.status.get() == 'Старт':
             self.start_button.configure(fg_color='red', hover_color='red')
@@ -107,9 +129,23 @@ class App(customtkinter.CTk):
     def scan(self):
         if self.work:
             self.log('Начало сканирования...')
-            self.casebook.get_cases(self.selected_filter['filter'])
+            try:
+                cases = self.casebook.get_cases(self.selected_filter['filter'], self.selected_timedelta)
+            except json.decoder.JSONDecodeError:
+                self.log('Ошибка авторизации, получени нового токена')
+                self.casebook.headless_auth()
+            if cases:
+                self.log('Получаем контакты...')
+                for case in cases:
+                    from internal.contacts import get_contacts
+                    case.contacts_info['numbers'], case.contacts_info['emails'] = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
+                self.log('Формируем лиды...')
+            else:
+                self.log('Не найдено новых кейсов.')
+            self.after(600000, self.scan)
+            self.log('Цикл завершен, задача поставлена в \n очередь через 10 минут')
         else:
-            self.after(10000, self.scan())
+            self.after(10000, self.scan)
         pass
 
     def log(self, info):
