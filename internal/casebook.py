@@ -23,6 +23,7 @@ class Side:
 
 @dataclasses.dataclass
 class Case:
+    sum_: float
     plaintiff: Side
     respondent: Side
     court: str
@@ -30,7 +31,7 @@ class Case:
     number: str
     reg_date: datetime.date
     _type: dict
-    contacts_info: str | None = None
+    contacts_info: dict = dataclasses.field(default_factory=dict)
 
 
 class Casebook:
@@ -103,16 +104,29 @@ class Casebook:
     def get_info_about_case(self):
         pass
 
-    def get_cases(self, filter_, timedelta):
+    def get_cases(self, filter_: dict, timedelta):
+        i = 0
+        for filter__ in filter_['items']:
+            if filter__['filter']['type'] == 'CaseStartDate':
+                filter_['items'][i]['filter']['value'] = {
+                    'from': (datetime.datetime.now().date() - datetime.timedelta(days=timedelta)).strftime('%Y-%m-%d'),
+                    'to': datetime.datetime.now().date().strftime('%Y-%m-%d')
+                }
+            else:
+                i += 1
+
         query = f'{filter_}, "page":1,"count":30,"isNeedStat":true'
         response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
                                             body=query.replace('None', 'null'),
                                             headers=self.headers)
         serialized = json.loads(response.data)
+        print(serialized)
         pages = serialized['result']['pagesCount']
         cases = []
         result = []
-        for i in range(1, pages + 1):
+        print(filter_)
+        for i in range(1, pages):
+            print('запрашиваем страницу ', i)
             query = f'{filter_}, "page":{i}, "count":30,"isNeedStat":true'
             response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
                                                 body=query.replace('None', 'null'),
@@ -122,18 +136,23 @@ class Casebook:
             for case in serialized['result']['items']:
                 cases.append(case)
         for case in cases:
+            if len(case['sides']) > 2:
+                print('в ', case['caseNumber'], ' больше 2 сторон')
+                cases.remove(case)
+                continue
+            have_stopword = False
             for side in case['sides']:
-                have_stopword = False
                 from stopwords import stopwords
                 for stopword in stopwords:
-                    if stopword.upper() in side['name'].upper():
-                        continue
+                    if stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper()):
+                        have_stopword = True
+                        print('skip -> в ', side['name'], ' найдено ', stopword)
                 if side['typeEnum'] == "Plaintiff":
                     plaintiff = Side(
-                            name=side['name'],
-                            inn=side['inn'],
-                            ogrn=side['ogrn'],
-                        )
+                        name=side['name'],
+                        inn=side['inn'],
+                        ogrn=side['ogrn'],
+                    )
                 elif side['typeEnum'] == "Respondent":
                     respondent = Side(
                         name=side['name'],
@@ -154,7 +173,8 @@ class Casebook:
                     _type={
                         "caseTypeM": case['caseTypeMCode'],
                         "caseTypeENG": case['caseType']
-                    }
+                    },
+                    sum_=case['claimSum']
 
                 )
                 result.append(case_)

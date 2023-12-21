@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import json
 import os
@@ -55,18 +56,17 @@ class App(customtkinter.CTk):
                                       supabase_key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYnZmYmdkZHR3d3llc3VjbGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI5MTkxOTQsImV4cCI6MjAxODQ5NTE5NH0.3d-TbkiCuNYDF9FZYnuE24RW7txH2fBcjA9aJK3jOwI')
 
         creds = self.supabase.table('credentionals').select('*').execute()
-        print(creds)
-        # prod
-        # casebook = Casebook(cache=cache.casebook_cache)
-        # test
-        self.casebook = Casebook(cache=CaseBookCache(login_data={
-            'login': "director@yk-cfo.ru",
-            'password': "ykcfo3132",
-        }))
+        for data in creds.data:
+            if data['name'] == 'bitrix':
+                self.bitrix_data = data
+            elif data['name'] == 'casebook':
+                self.casebook_data = data
+
+        self.casebook = Casebook(cache=CaseBookCache(login_data=self.casebook_data))
 
         self.log("Авторизация Casebook успешно...")
 
-        self.bitrix = BitrixConnect()
+        self.bitrix = BitrixConnect(webhook=self.bitrix_data['login'])
 
         self.config_group = customtkinter.CTkFrame(self, height=50)
         self.config_group.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
@@ -77,7 +77,8 @@ class App(customtkinter.CTk):
         self.period_label = customtkinter.CTkLabel(self.config_group, text="Период сканирования")
         self.period_label.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.update_period = customtkinter.CTkOptionMenu(self.config_group, height=10,
-                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц', '<!тест!>'],
+                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц',
+                                                                 '<!тест!>'],
                                                          command=self.change_time_delta)
         self.update_period.grid(row=2, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
@@ -85,7 +86,8 @@ class App(customtkinter.CTk):
         self.data_set.grid(row=3, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
         self.update_data_set = customtkinter.CTkOptionMenu(self.config_group, height=10,
-                                                           values=[filter_['name'] for filter_ in self.casebook.filters],
+                                                           values=[filter_['name'] for filter_ in
+                                                                   self.casebook.filters],
                                                            command=self.change_filter)
         self.selected_filter = self.casebook.filters[0]
         self.update_data_set.grid(row=3, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
@@ -132,14 +134,31 @@ class App(customtkinter.CTk):
             try:
                 cases = self.casebook.get_cases(self.selected_filter['filter'], self.selected_timedelta)
             except json.decoder.JSONDecodeError:
-                self.log('Ошибка авторизации, получени нового токена')
+                self.log('Ошибка авторизации, получение нового токена')
                 self.casebook.headless_auth()
             if cases:
                 self.log('Получаем контакты...')
                 for case in cases:
+                    if (self.supabase.table('processed_cases').select().eq('case_id', str(case.number)).execute()).data:
+                        cases.remove(case)
+                        continue
                     from internal.contacts import get_contacts
-                    case.contacts_info['numbers'], case.contacts_info['emails'] = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
+                    case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
+                    print(case.contacts_info)
+                for case in cases:
+                    if case.contacts_info['emails'] == [] and case.contacts_info['numbers'] == []:
+                        cases.remove(case)
+                [print(case) for case in cases]
                 self.log('Формируем лиды...')
+                for case in cases:
+                    err = self.bitrix.create_lead(case)
+                    if not err:
+                        self.supabase.table('processed_cases').insert({
+                            'processed_date': datetime.now().date(),
+                            'case_id': case.number
+                        })
+                    else:
+                        self.log(f'{case.number} не удалось записать в Б24')
             else:
                 self.log('Не найдено новых кейсов.')
             self.after(600000, self.scan)
