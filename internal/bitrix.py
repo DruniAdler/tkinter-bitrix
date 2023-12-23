@@ -103,7 +103,6 @@ class BitrixConnect:
     def create_lead(self, case: Case):
         emails = []
         phones = []
-        print([phone for phone in case.contacts_info['numbers']])
         for phone in case.contacts_info['numbers']:
             phones.append({'VALUE': str(phone), 'VALUE_TYPE': 'WORK'})
         for email in case.contacts_info['emails']:
@@ -111,17 +110,19 @@ class BitrixConnect:
         try:
             result = self.bitrix.call('crm.lead.add',
                              {"fields": {
+                                 "TITLE": case.number,
+                                 "UF_CRM_1703238484214": case.url,
                                  "STATUS_ID": "UC_0LLO5N",
+                                 "COMPANY_TITLE": case.respondent.name,
                                  "UF_CRM_1702365701": case.number,
                                  "UF_CRM_1702366987": courts.get(case.court),
-                                 "": case.reg_date.isoformat(),
+                                 "UF_CRM_1702365740": case.reg_date.isoformat(),
                                  "UF_CRM_1702365922": f'{case.plaintiff.name}',
                                  "UF_CRM_1702365965": case.sum_,
                                  "PHONE": phones,
                                  "EMAIL": emails
                              }}
                              )
-            print(result)
             return None
         except Exception as e:
             print(e)

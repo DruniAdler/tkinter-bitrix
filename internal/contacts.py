@@ -51,27 +51,6 @@ def remove_duplicates(input_list):
         pass
 
 
-def process_one(inn):
-    url1 = "https://www.list-org.com/search?type=inn&val=" + inn
-    headers = {
-        'User-Agent': 'Mozila/5.0(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-    try:
-        response_one_0 = requests.get(url1, headers=headers)
-        soup = BeautifulSoup(response_one_0.text, "html.parser")
-        link = \
-            soup.find("div", class_='card w-100 p-1 p-lg-3 mt-1').find("div", class_="org_list").find("p").find("a")[
-                "href"]
-        get_link_one = "https://www.list-org.com/" + link
-        response_one_1 = requests.get(get_link_one, headers=headers)
-        soup = BeautifulSoup(response_one_1.text, "html.parser")
-        info_one = soup.find('div', class_="card w-100 p-1 p-lg-3 mt-2")
-        return info_one.text
-        # await process_string(find_phone(info_one.text), number_list)
-        # await process_email_string(find_mail(info_one.text), email_list)
-    except Exception as e:
-        pass
-
-
 def process_two(ogrn):
     url2 = "https://checko.ru/company/" + ogrn
     headers = {
@@ -122,47 +101,41 @@ def process_four(ogrn):
         pass
 
 
-
-
-
-
 def get_contacts(inn, ogrn):
     number_list = []
     email_list = []
 
-    first_res = process_one(inn)
     second_res = process_two(ogrn)
     three_res = process_three(ogrn)
     four_res = process_four(ogrn)
 
-
-    try:
-        process_string(find_phone(first_res), number_list)
-    except Exception as e: pass
-    try:
-        process_email_string(find_mail(first_res), email_list)
-    except Exception as e: pass
     try:
         process_string(find_phone(second_res), number_list)
-    except Exception as e: pass
+    except Exception as e:
+        pass
     try:
         process_email_string(find_mail(second_res), email_list)
-    except Exception as e: pass
+    except Exception as e:
+        pass
     try:
         process_string(find_phone(three_res), number_list)
-    except Exception as e: pass
+    except Exception as e:
+        pass
     try:
         process_email_string(find_mail(three_res), email_list)
-    except Exception as e: pass
+    except Exception as e:
+        pass
     try:
         process_string(find_phone(four_res[3].find("gweb-copy",
-                                                     class_="gweb-copy relative inline-block mb-0 py-0 copy-available "
-                                                            "z-10 cursor-pointer copy-right-padding").text),
-                         number_list)
-    except Exception as e: pass
+                                                   class_="gweb-copy relative inline-block mb-0 py-0 copy-available "
+                                                          "z-10 cursor-pointer copy-right-padding").text),
+                       number_list)
+    except Exception as e:
+        pass
     try:
         process_email_string(find_mail(four_res[3].find("a").text), email_list)
-    except Exception as e: pass
+    except Exception as e:
+        pass
 
     number_list = list(set(number_list))
     email_list = list(set(email_list))

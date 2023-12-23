@@ -59,7 +59,7 @@ class Casebook:
         self.filters = None
         self.get_filters()
 
-    def headless_auth(self, login: str, password: str):
+    def headless_auth(self, login: str = None, password: str = None):
         if not login:
             login = self.login
             password = self.password
@@ -115,29 +115,29 @@ class Casebook:
             else:
                 i += 1
 
+        print(filter_)
+
         query = f'{filter_}, "page":1,"count":30,"isNeedStat":true'
         response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
                                             body=query.replace('None', 'null'),
                                             headers=self.headers)
         serialized = json.loads(response.data)
-        print(serialized)
         pages = serialized['result']['pagesCount']
         cases = []
         result = []
-        print(filter_)
-        for i in range(1, pages):
-            print('запрашиваем страницу ', i)
-            query = f'{filter_}, "page":{i}, "count":30,"isNeedStat":true'
+        print(pages)
+        for page in range(1, pages + 1):
+            serialized_page = None
+            curr_query = f'{filter_}, "page":{page}, "count":30,"isNeedStat":true'
             response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
-                                                body=query.replace('None', 'null'),
+                                                body=curr_query.replace('None', 'null'),
                                                 headers=self.headers)
-
-            serialized = json.loads(response.data)
-            for case in serialized['result']['items']:
+            serialized_page = json.loads(response.data)
+            for case in serialized_page['result']['items']:
                 cases.append(case)
         for case in cases:
             if len(case['sides']) > 2:
-                print('в ', case['caseNumber'], ' больше 2 сторон')
+                # print('в ', case['caseNumber'], ' больше 2 сторон')
                 cases.remove(case)
                 continue
             have_stopword = False
@@ -146,7 +146,8 @@ class Casebook:
                 for stopword in stopwords:
                     if stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper()):
                         have_stopword = True
-                        print('skip -> в ', side['name'], ' найдено ', stopword)
+                        # print('skip -> в ', side['name'], ' найдено ', stopword)
+                        break
                 if side['typeEnum'] == "Plaintiff":
                     plaintiff = Side(
                         name=side['name'],
@@ -178,5 +179,5 @@ class Casebook:
 
                 )
                 result.append(case_)
-        print(result)
+        print(len(result))
         return result

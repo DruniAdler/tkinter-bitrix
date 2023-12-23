@@ -8,6 +8,7 @@ import customtkinter
 import tkinter
 import tkinter.messagebox
 
+import postgrest.exceptions
 from supabase import create_client
 
 from internal.bitrix import BitrixConnect
@@ -43,12 +44,17 @@ class App(customtkinter.CTk):
         self.status = tkinter.StringVar()
         self.status.set('Старт')
 
+        self.delay = tkinter.StringVar()
+        self.delay.set('20')
+
+        self.without_contacts_: tkinter.Variable = tkinter.IntVar()
+
         # configure grid layout (4x4)
         self.grid_rowconfigure((0, 1), weight=1)
         self.grid_rowconfigure(2, weight=0)
         self.grid_rowconfigure(3, weight=1)
 
-        self.textbox = customtkinter.CTkTextbox(self, width=360, height=150)
+        self.textbox = customtkinter.CTkTextbox(self, width=360, height=150, state='disabled')
         self.textbox.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.log('Старт приложения')
 
@@ -77,8 +83,7 @@ class App(customtkinter.CTk):
         self.period_label = customtkinter.CTkLabel(self.config_group, text="Период сканирования")
         self.period_label.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.update_period = customtkinter.CTkOptionMenu(self.config_group, height=10,
-                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц',
-                                                                 '<!тест!>'],
+                                                         values=['1 день', '3 дня', '1 неделя', '2 недели', 'месяц'],
                                                          command=self.change_time_delta)
         self.update_period.grid(row=2, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
@@ -92,13 +97,25 @@ class App(customtkinter.CTk):
         self.selected_filter = self.casebook.filters[0]
         self.update_data_set.grid(row=3, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
+        self.period_label = customtkinter.CTkLabel(self.config_group, text="Пауза между \n прогонами в минутах")
+        self.period_label.grid(row=4, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.work_interval = customtkinter.CTkEntry(self.config_group, textvariable=self.delay)
+        self.work_interval.grid(row=4, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+
+        # self.without_contacts_label = customtkinter.CTkLabel(self.config_group, text="Загружать без \n контактов")
+        # self.without_contacts_label.grid(row=5, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+
+        self.without_contacts = customtkinter.CTkCheckBox(self.config_group, variable=self.without_contacts_,
+                                                          text='Загружать без контактов')
+
+        self.without_contacts.grid(row=5, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew", columnspan=2)
+
         self.start_button = customtkinter.CTkButton(self, textvariable=self.status, command=self.start_stop,
                                                     fg_color='blue', hover_color='blue')
         self.start_button.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
     def change_filter(self, choice):
         self.selected_filter = list(filter(lambda x: x.get('name') == choice, self.casebook.filters))[0]
-        print(self.selected_filter)
 
     def change_time_delta(self, choice):
         if choice == '1 день':
@@ -111,9 +128,6 @@ class App(customtkinter.CTk):
             self.selected_timedelta = 14
         elif choice == 'месяц':
             self.selected_timedelta = 30
-        elif choice == '<!тест!>':
-            self.selected_timedelta = (datetime.now().date() - datetime.strptime("09-11-2023", '%d-%m-%Y').date()).days
-            self.log("[ВНИМАНИЕ] Выбрана тестовая выборка...")
 
     def start_stop(self):
         if self.status.get() == 'Старт':
@@ -138,37 +152,44 @@ class App(customtkinter.CTk):
                 self.casebook.headless_auth()
             if cases:
                 self.log('Получаем контакты...')
+                processed_cases = []
                 for case in cases:
-                    if (self.supabase.table('processed_cases').select().eq('case_id', str(case.number)).execute()).data:
-                        cases.remove(case)
-                        continue
-                    from internal.contacts import get_contacts
-                    case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
-                    print(case.contacts_info)
-                for case in cases:
-                    if case.contacts_info['emails'] == [] and case.contacts_info['numbers'] == []:
-                        cases.remove(case)
-                [print(case) for case in cases]
+                    print(self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data)
+                    if self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data:
+                        from internal.contacts import get_contacts
+                        case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
+                        processed_cases.append(case)
+                        print(processed_cases)
+                cases = processed_cases
+                if self.without_contacts_.get() == 0:
+                    for case in cases:
+                        if case.contacts_info.get('emails') == [] and case.contacts_info.get('numbers') == []:
+                            cases.remove(case)
                 self.log('Формируем лиды...')
                 for case in cases:
-                    err = self.bitrix.create_lead(case)
-                    if not err:
-                        self.supabase.table('processed_cases').insert({
-                            'processed_date': datetime.now().date(),
-                            'case_id': case.number
-                        })
-                    else:
-                        self.log(f'{case.number} не удалось записать в Б24')
+                    try:
+                        err = self.bitrix.create_lead(case)
+                        if err:
+                            self.log(f'{case.number} не удалось записать в Б24')
+                        else:
+                            self.supabase.table('processed_cases').insert({
+                                'processed_date': datetime.now().date().isoformat(),
+                                'case_id': case.number
+                            }).execute()
+                    except postgrest.exceptions.APIError as e:
+                        print(case.number, ' <-- проконтролировать \n', e)
             else:
                 self.log('Не найдено новых кейсов.')
-            self.after(600000, self.scan)
-            self.log('Цикл завершен, задача поставлена в \n очередь через 10 минут')
+            self.after(int(self.delay.get()) * 1000 * 60, self.scan)
+            self.log(f'Цикл завершен, задача поставлена в \n очередь через {self.delay.get()} минут')
         else:
             self.after(10000, self.scan)
         pass
 
     def log(self, info):
+        self.textbox.configure(state='normal')
         self.textbox.insert('end', f'[{datetime.now().time().strftime("%H:%M:%S")}] -> {str(info)} \n')
+        self.textbox.configure(state='disabled')
 
 
 if __name__ == "__main__":
