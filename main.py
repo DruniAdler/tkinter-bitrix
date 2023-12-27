@@ -154,12 +154,10 @@ class App(customtkinter.CTk):
                 self.log('Получаем контакты...')
                 processed_cases = []
                 for case in cases:
-                    print(self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data)
-                    if self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data:
+                    if not self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data:
                         from internal.contacts import get_contacts
                         case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
                         processed_cases.append(case)
-                        print(processed_cases)
                 cases = processed_cases
                 if self.without_contacts_.get() == 0:
                     for case in cases:

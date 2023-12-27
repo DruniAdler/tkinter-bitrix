@@ -86,6 +86,13 @@ class Casebook:
                 auth_email = i['value']
                 self.auth_email = auth_email
 
+        self.headers = {
+            'cookie': f'.AuthToken={self.auth_token};'
+                      f' .AuthEmail={self.auth_email}',
+            'user-agent': self.user_agent,
+            'content-type': 'application/json'
+        }
+
         return {'email': self.auth_email,
                 'token': self.auth_token}
 
@@ -104,8 +111,10 @@ class Casebook:
     def get_info_about_case(self):
         pass
 
-    def get_cases(self, filter_: dict, timedelta):
+    def get_cases(self, filter_source: dict, timedelta):
+        serialized = None
         i = 0
+        filter_ = filter_source
         for filter__ in filter_['items']:
             if filter__['filter']['type'] == 'CaseStartDate':
                 filter_['items'][i]['filter']['value'] = {
@@ -114,23 +123,33 @@ class Casebook:
                 }
             else:
                 i += 1
-
-        print(filter_)
-
-        query = f'{filter_}, "page":1,"count":30,"isNeedStat":true'
+        query = filter_
+        query['page'] = 1
+        query['count'] = 30
+        query['isNeedStat'] = True
+        query = str(query)
         response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
-                                            body=query.replace('None', 'null'),
+                                            body=query.replace('None', 'null')
+                                            .replace("'", '"')
+                                            .replace('True', 'true')
+                                            .replace('False', 'false'),
                                             headers=self.headers)
         serialized = json.loads(response.data)
         pages = serialized['result']['pagesCount']
         cases = []
         result = []
-        print(pages)
         for page in range(1, pages + 1):
             serialized_page = None
-            curr_query = f'{filter_}, "page":{page}, "count":30,"isNeedStat":true'
+            curr_query = filter_
+            curr_query['page'] = page
+            curr_query['count'] = 30
+            curr_query['isNeedStat'] = True
+            curr_query = str(curr_query)
             response = self.http_client.request('POST', 'https://casebook.ru/ms/Search/Cases/Search',
-                                                body=curr_query.replace('None', 'null'),
+                                                body=curr_query.replace('None', 'null')
+                                                .replace("'", '"')
+                                                .replace('True', 'true')
+                                                .replace('False', 'false'),
                                                 headers=self.headers)
             serialized_page = json.loads(response.data)
             for case in serialized_page['result']['items']:
@@ -146,7 +165,6 @@ class Casebook:
                 for stopword in stopwords:
                     if stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper()):
                         have_stopword = True
-                        # print('skip -> в ', side['name'], ' найдено ', stopword)
                         break
                 if side['typeEnum'] == "Plaintiff":
                     plaintiff = Side(
