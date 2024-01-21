@@ -8,6 +8,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
+class GetOutOfLoop(Exception):
+    pass
 
 @dataclasses.dataclass
 class CaseBookCache:
@@ -116,12 +118,16 @@ class Casebook:
         i = 0
         filter_ = filter_source
         for filter__ in filter_['items']:
-            if filter__['filter']['type'] == 'CaseStartDate':
-                filter_['items'][i]['filter']['value'] = {
-                    'from': (datetime.datetime.now().date() - datetime.timedelta(days=timedelta)).strftime('%Y-%m-%d'),
-                    'to': datetime.datetime.now().date().strftime('%Y-%m-%d')
-                }
-            else:
+            print(filter__)
+            try:
+                if filter__['filter']['type'] == 'CaseStartDate':
+                    filter_['items'][i]['filter']['value'] = {
+                        'from': (datetime.datetime.now().date() - datetime.timedelta(days=timedelta)).strftime('%Y-%m-%d'),
+                        'to': datetime.datetime.now().date().strftime('%Y-%m-%d')
+                    }
+                else:
+                    i += 1
+            except KeyError:
                 i += 1
         query = filter_
         query['page'] = 1
@@ -160,42 +166,49 @@ class Casebook:
                 cases.remove(case)
                 continue
             have_stopword = False
-            for side in case['sides']:
-                from stopwords import stopwords
-                for stopword in stopwords:
-                    if stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper()):
-                        have_stopword = True
-                        break
-                if side['typeEnum'] == "Plaintiff":
-                    plaintiff = Side(
-                        name=side['name'],
-                        inn=side['inn'],
-                        ogrn=side['ogrn'],
-                    )
-                elif side['typeEnum'] == "Respondent":
-                    respondent = Side(
-                        name=side['name'],
-                        inn=side['inn'],
-                        ogrn=side['ogrn'],
-                    )
-                date = datetime.datetime.fromisoformat(case['startDate']).date()
-            if have_stopword or (datetime.date.today() - date).days > timedelta:
-                continue
-            else:
-                case_ = Case(
-                    plaintiff=plaintiff,
-                    respondent=respondent,
-                    court=case['instancesInternal'][0]['court'],
-                    url=f'https://casebook.ru/card/case/{case["caseId"]}',
-                    number=case['caseNumber'],
-                    reg_date=datetime.datetime.fromisoformat(case['startDate']).date(),
-                    _type={
-                        "caseTypeM": case['caseTypeMCode'],
-                        "caseTypeENG": case['caseType']
-                    },
-                    sum_=case['claimSum']
+            try:
+                for side in case['sides']:
+                    from stopwords import stopwords
+                    for stopword in stopwords:
+                        if (stopword.upper() in side['name'].upper() \
+                                and not ('КОМП' in side['name'].upper()) \
+                                and not ('Индивидуальный предприниматель').upper() in side['name'].upper()) \
+                                and side['typeEnum'] == 'Respondent':
+                            # print(f'https://casebook.ru/card/case/{case["caseId"]}      {side['name']}      {stopword}' )
+                            have_stopword = True
+                            raise GetOutOfLoop
+                    if side['typeEnum'] == "Plaintiff":
+                        plaintiff = Side(
+                            name=side['name'],
+                            inn=side['inn'],
+                            ogrn=side['ogrn'],
+                        )
+                    elif side['typeEnum'] == "Respondent":
+                        respondent = Side(
+                            name=side['name'],
+                            inn=side['inn'],
+                            ogrn=side['ogrn'],
+                        )
+                    date = datetime.datetime.fromisoformat(case['startDate']).date()
+                if have_stopword or (datetime.date.today() - date).days > timedelta:
+                    continue
+                else:
+                    case_ = Case(
+                        plaintiff=plaintiff,
+                        respondent=respondent,
+                        court=case['instancesInternal'][0]['court'],
+                        url=f'https://casebook.ru/card/case/{case["caseId"]}',
+                        number=case['caseNumber'],
+                        reg_date=datetime.datetime.fromisoformat(case['startDate']).date(),
+                        _type={
+                            "caseTypeM": case['caseTypeMCode'],
+                            "caseTypeENG": case['caseType']
+                        },
+                        sum_=case['claimSum']
 
-                )
-                result.append(case_)
+                    )
+                    result.append(case_)
+            except GetOutOfLoop:
+                pass
         print(len(result))
         return result
