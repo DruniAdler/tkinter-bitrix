@@ -1,3 +1,4 @@
+import datetime
 from typing import Tuple, List, Any
 
 import requests
@@ -107,7 +108,7 @@ def get_contacts(inn, ogrn):
 
     second_res = process_two(ogrn)
     three_res = process_three(ogrn)
-    four_res = process_four(ogrn)
+    #four_res = process_four(ogrn)
 
     try:
         process_string(find_phone(second_res), number_list)

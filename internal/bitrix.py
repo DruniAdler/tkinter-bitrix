@@ -100,7 +100,7 @@ class BitrixConnect:
     def __init__(self, webhook='https://crm.yk-cfo.ru/rest/1690/eruxj0nx7ria5j0q/'):
         self.bitrix = Bitrix(webhook)
 
-    def create_lead(self, case: Case):
+    def create_lead(self, case: Case, rights):
         emails = []
         phones = []
         for phone in case.contacts_info['numbers']:
@@ -109,20 +109,29 @@ class BitrixConnect:
             emails.append({'VALUE': str(email), 'VALUE_TYPE': 'WORK'})
         try:
             result = self.bitrix.call('crm.lead.add',
-                             {"fields": {
-                                 "TITLE": case.number,
-                                 "UF_CRM_1703238484214": case.url,
-                                 "STATUS_ID": "UC_0LLO5N",
-                                 "COMPANY_TITLE": case.respondent.name,
-                                 "UF_CRM_1702365701": case.number,
-                                 "UF_CRM_1702366987": courts.get(case.court),
-                                 "UF_CRM_1702365740": case.reg_date.isoformat(),
-                                 "UF_CRM_1702365922": f'{case.plaintiff.name}',
-                                 "UF_CRM_1702365965": case.sum_,
-                                 "PHONE": phones,
-                                 "EMAIL": emails
-                             }}
-                             )
+                                      {"fields": {
+                                          "TITLE": case.number,
+                                          "UF_CRM_1703238484214": case.url,
+                                          "STATUS_ID": "UC_0LLO5N",
+                                          "COMPANY_TITLE": case.respondent.name,
+                                          "UF_CRM_1702365701": case.number,
+                                          "UF_CRM_1702366987": courts.get(case.court),
+                                          "UF_CRM_1702365740": case.reg_date.isoformat(),
+                                          "UF_CRM_1702365922": f'{case.plaintiff.name}',
+                                          "UF_CRM_1702365965": case.sum_,
+                                          "PHONE": phones,
+                                          "EMAIL": emails,
+                                          "UF_CRM_1703235529": 894 if rights else 893,
+                                          # Тип прав - UF_CRM_1703234971
+                                          # Исключительные права - 893
+                                          # Неисключительные права - 894
+
+                                          "UF_CRM_1703234971": 896 if len(case.respondent.inn) == 12 else 898,
+                                          # Шаблон письма КП
+                                          # Ответчик - ИП - 896
+                                          # Ответчик - ООО - 898
+                                      }}
+                                      )
             return None
         except Exception as e:
             print(e)

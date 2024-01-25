@@ -8,8 +8,10 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
+
 class GetOutOfLoop(Exception):
     pass
+
 
 @dataclasses.dataclass
 class CaseBookCache:
@@ -118,11 +120,11 @@ class Casebook:
         i = 0
         filter_ = filter_source
         for filter__ in filter_['items']:
-            print(filter__)
             try:
                 if filter__['filter']['type'] == 'CaseStartDate':
                     filter_['items'][i]['filter']['value'] = {
-                        'from': (datetime.datetime.now().date() - datetime.timedelta(days=timedelta)).strftime('%Y-%m-%d'),
+                        'from': (datetime.datetime.now().date() - datetime.timedelta(days=timedelta)).strftime(
+                            '%Y-%m-%d'),
                         'to': datetime.datetime.now().date().strftime('%Y-%m-%d')
                     }
                 else:
@@ -170,8 +172,7 @@ class Casebook:
                 for side in case['sides']:
                     from stopwords import stopwords
                     for stopword in stopwords:
-                        if (stopword.upper() in side['name'].upper() \
-                                and not ('КОМП' in side['name'].upper()) \
+                        if (stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper())
                                 and not ('Индивидуальный предприниматель').upper() in side['name'].upper()) \
                                 and side['typeEnum'] == 'Respondent':
                             # print(f'https://casebook.ru/card/case/{case["caseId"]}      {side['name']}      {stopword}' )
@@ -210,5 +211,4 @@ class Casebook:
                     result.append(case_)
             except GetOutOfLoop:
                 pass
-        print(len(result))
         return result

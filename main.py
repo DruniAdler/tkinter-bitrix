@@ -33,6 +33,7 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
+        self.rights = False
         self.selected_timedelta = 1
         self.work = False
 
@@ -116,6 +117,11 @@ class App(customtkinter.CTk):
 
     def change_filter(self, choice):
         self.selected_filter = list(filter(lambda x: x.get('name') == choice, self.casebook.filters))[0]
+        if self.selected_filter.get('id') == 558875:
+            self.log('СПОРЫ ПО ТОВАРНЫМ ЗНАКАМ!')
+            self.rights = True
+        else:
+            self.rights = False
 
     def change_time_delta(self, choice):
         if choice == '1 день':
@@ -159,14 +165,19 @@ class App(customtkinter.CTk):
                         case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
                         processed_cases.append(case)
                 cases = processed_cases
+                print(cases)
                 if self.without_contacts_.get() == 0:
                     for case in cases:
                         if case.contacts_info.get('emails') == [] and case.contacts_info.get('numbers') == []:
                             cases.remove(case)
                 self.log('Формируем лиды...')
+                print('лиды')
                 for case in cases:
                     try:
-                        err = self.bitrix.create_lead(case)
+                        if self.rights:
+                            err = self.bitrix.create_lead(case)
+                        else:
+                            err = self.bitrix.create_lead(case, rights=True)
                         if err:
                             self.log(f'{case.number} не удалось записать в Б24')
                         else:
