@@ -108,29 +108,28 @@ class BitrixConnect:
         for email in case.contacts_info['emails']:
             emails.append({'VALUE': str(email), 'VALUE_TYPE': 'WORK'})
         try:
+            UF_CRM_1703235529 = 896 if len(case.respondent.inn) == 12 else 898
+            UF_CRM_1703234971 = 894 if rights else 893
+
+            # UF_CRM_1703235529 = "Исключительные права" if rights else "Неисключительные права"
+            # UF_CRM_1703234971 = "Ответчик - ИП" if len(case.respondent.inn) == 12 else "Ответчик - ООО"
+
             result = self.bitrix.call('crm.lead.add',
                                       {"fields": {
-                                          "TITLE": case.number,
-                                          "UF_CRM_1703238484214": case.url,
-                                          "STATUS_ID": "UC_0LLO5N",
-                                          "COMPANY_TITLE": case.respondent.name,
-                                          "UF_CRM_1702365701": case.number,
-                                          "UF_CRM_1702366987": courts.get(case.court),
-                                          "UF_CRM_1702365740": case.reg_date.isoformat(),
-                                          "UF_CRM_1702365922": f'{case.plaintiff.name}',
-                                          "UF_CRM_1702365965": case.sum_,
-                                          "PHONE": phones,
-                                          "EMAIL": emails,
-                                          "UF_CRM_1703235529": 894 if rights else 893,
-                                          # Тип прав - UF_CRM_1703234971
-                                          # Исключительные права - 893
-                                          # Неисключительные права - 894
-
-                                          "UF_CRM_1703234971": 896 if len(case.respondent.inn) == 12 else 898,
-                                          # Шаблон письма КП
-                                          # Ответчик - ИП - 896
-                                          # Ответчик - ООО - 898
-                                      }}
+                                              "TITLE": case.number,
+                                              "UF_CRM_1703238484214": case.url,
+                                              "STATUS_ID": "UC_0LLO5N",
+                                              "COMPANY_TITLE": case.respondent.name,
+                                              "UF_CRM_1702365701": case.number,
+                                              "UF_CRM_1702366987": courts.get(case.court),
+                                              "UF_CRM_1702365740": case.reg_date.isoformat(),
+                                              "UF_CRM_1702365922": f'{case.plaintiff.name}',
+                                              "UF_CRM_1702365965": case.sum_,
+                                              "PHONE": phones,
+                                              "EMAIL": emails,
+                                              "UF_CRM_1703235529": UF_CRM_1703235529,
+                                              "UF_CRM_1703234971": UF_CRM_1703234971,
+                                          }}
                                       )
             return None
         except Exception as e:
