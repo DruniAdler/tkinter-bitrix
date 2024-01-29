@@ -215,6 +215,12 @@ class Casebook:
                         )
                     date = datetime.datetime.fromisoformat(case['startDate']).date()
                 if have_stopword or (datetime.date.today() - date).days > timedelta:
+                    supabase.table('processed_cases').insert({
+                        'processed_date': datetime.datetime.now().date().isoformat(),
+                        'case_id': case['caseNumber'],
+                        'is_success': False,
+                        'error': f'Дело старше указанного времени давности. (timedelta -> {timedelta})'
+                    }).execute()
                     continue
                 else:
                     case_ = Case(
