@@ -152,7 +152,7 @@ class App(customtkinter.CTk):
         if self.work:
             self.log('Начало сканирования...')
             try:
-                cases = self.casebook.get_cases(self.selected_filter['filter'], self.selected_timedelta)
+                cases = self.casebook.get_cases(self.selected_filter['filter'], self.selected_timedelta, self.supabase)
             except json.decoder.JSONDecodeError:
                 self.log('Ошибка авторизации, получение нового токена')
                 self.casebook.headless_auth()
@@ -183,7 +183,8 @@ class App(customtkinter.CTk):
                         else:
                             self.supabase.table('processed_cases').insert({
                                 'processed_date': datetime.now().date().isoformat(),
-                                'case_id': case.number
+                                'case_id': case.number,
+                                'is_success': True,
                             }).execute()
                     except postgrest.exceptions.APIError as e:
                         print(case.number, ' <-- проконтролировать \n', e)

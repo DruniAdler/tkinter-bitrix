@@ -7,6 +7,7 @@ import urllib3
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from supabase._sync.client import SyncClient
 
 
 class GetOutOfLoop(Exception):
@@ -36,6 +37,7 @@ class Case:
     reg_date: datetime.date
     _type: dict
     contacts_info: dict = dataclasses.field(default_factory=dict)
+    error: str = None
 
 
 class Casebook:
@@ -115,7 +117,7 @@ class Casebook:
     def get_info_about_case(self):
         pass
 
-    def get_cases(self, filter_source: dict, timedelta):
+    def get_cases(self, filter_source: dict, timedelta, supabase: SyncClient):
         serialized = None
         i = 0
         filter_ = filter_source
@@ -164,8 +166,24 @@ class Casebook:
                 cases.append(case)
         for case in cases:
             if len(case['sides']) > 2:
-                # print('в ', case['caseNumber'], ' больше 2 сторон')
-                cases.remove(case)
+                _respondent = 0
+                _plaintiff = 0
+                _other = 0
+                for side in case['sides']:
+                    if side['nSideTypeEnum'] == 'Other':
+                        _other += 1
+                    elif side['nSideTypeEnum'] == 'Plaintiff':
+                        _plaintiff += 1
+                    elif side['nSideTypeEnum'] == 'Respondent':
+                        _respondent += 1
+                if _respondent > 1:
+                    supabase.table('processed_cases').insert({
+                        'processed_date': datetime.datetime.now().date().isoformat(),
+                        'case_id': case['caseNumber'],
+                        'is_success': False,
+                        'error': 'больше одного ответчика, отфильтровано'
+                    }).execute()
+                    cases.remove(case)
                 continue
             have_stopword = False
             try:
@@ -175,8 +193,13 @@ class Casebook:
                         if (stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper())
                                 and not ('Индивидуальный предприниматель').upper() in side['name'].upper()) \
                                 and side['typeEnum'] == 'Respondent':
-                            # print(f'https://casebook.ru/card/case/{case["caseId"]}      {side['name']}      {stopword}' )
                             have_stopword = True
+                            supabase.table('processed_cases').insert({
+                                'processed_date': datetime.datetime.now().date().isoformat(),
+                                'case_id': case['caseNumber'],
+                                'is_success': False,
+                                'error': f'Встретилось стоп-слово, отфильстровано. (PS -> {stopword})'
+                            }).execute()
                             raise GetOutOfLoop
                     if side['typeEnum'] == "Plaintiff":
                         plaintiff = Side(
