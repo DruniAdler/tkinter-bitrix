@@ -108,7 +108,7 @@ def get_contacts(inn, ogrn):
 
     second_res = process_two(ogrn)
     three_res = process_three(ogrn)
-    #four_res = process_four(ogrn)
+    # four_res = process_four(ogrn)
 
     try:
         process_string(find_phone(second_res), number_list)
@@ -124,17 +124,6 @@ def get_contacts(inn, ogrn):
         pass
     try:
         process_email_string(find_mail(three_res), email_list)
-    except Exception as e:
-        pass
-    try:
-        process_string(find_phone(four_res[3].find("gweb-copy",
-                                                   class_="gweb-copy relative inline-block mb-0 py-0 copy-available "
-                                                          "z-10 cursor-pointer copy-right-padding").text),
-                       number_list)
-    except Exception as e:
-        pass
-    try:
-        process_email_string(find_mail(four_res[3].find("a").text), email_list)
     except Exception as e:
         pass
 

@@ -4,6 +4,7 @@ import json
 import time
 
 import urllib3
+from postgrest import APIError
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -164,6 +165,7 @@ class Casebook:
             serialized_page = json.loads(response.data)
             for case in serialized_page['result']['items']:
                 cases.append(case)
+        print(len(cases))
         for case in cases:
             if len(case['sides']) > 2:
                 _respondent = 0
@@ -176,15 +178,21 @@ class Casebook:
                         _plaintiff += 1
                     elif side['nSideTypeEnum'] == 'Respondent':
                         _respondent += 1
-                if _respondent > 1:
-                    supabase.table('processed_cases').insert({
-                        'processed_date': datetime.datetime.now().date().isoformat(),
-                        'case_id': case['caseNumber'],
-                        'is_success': False,
-                        'error': 'больше одного ответчика, отфильтровано'
-                    }).execute()
-                    cases.remove(case)
-                continue
+                try:
+                    if _respondent > 1:
+                        supabase.table('processed_cases').insert({
+                            'processed_date': datetime.datetime.now().date().isoformat(),
+                            'case_id': case['caseNumber'],
+                            'is_success': False,
+                            'error': 'больше одного ответчика, отфильтровано'
+                        }).execute()
+                        cases.remove(case)
+                        continue
+                except APIError as e:
+                    if e.code == '23505':
+                        pass
+                    else:
+                        print(e.code, e.message)
             have_stopword = False
             try:
                 for side in case['sides']:
@@ -194,12 +202,18 @@ class Casebook:
                                 and not ('Индивидуальный предприниматель').upper() in side['name'].upper()) \
                                 and side['typeEnum'] == 'Respondent':
                             have_stopword = True
-                            supabase.table('processed_cases').insert({
-                                'processed_date': datetime.datetime.now().date().isoformat(),
-                                'case_id': case['caseNumber'],
-                                'is_success': False,
-                                'error': f'Встретилось стоп-слово, отфильстровано. (PS -> {stopword})'
-                            }).execute()
+                            try:
+                                supabase.table('processed_cases').insert({
+                                    'processed_date': datetime.datetime.now().date().isoformat(),
+                                    'case_id': case['caseNumber'],
+                                    'is_success': False,
+                                    'error': f'Встретилось стоп-слово, отфильстровано. (PS -> {stopword})'
+                                }).execute()
+                            except APIError as e:
+                                if e.code == '23505':
+                                    pass
+                                else:
+                                    print(e.code, e.message)
                             raise GetOutOfLoop
                     if side['typeEnum'] == "Plaintiff":
                         plaintiff = Side(
@@ -214,13 +228,7 @@ class Casebook:
                             ogrn=side['ogrn'],
                         )
                     date = datetime.datetime.fromisoformat(case['startDate']).date()
-                if have_stopword or (datetime.date.today() - date).days > timedelta:
-                    supabase.table('processed_cases').insert({
-                        'processed_date': datetime.datetime.now().date().isoformat(),
-                        'case_id': case['caseNumber'],
-                        'is_success': False,
-                        'error': f'Дело старше указанного времени давности. (timedelta -> {timedelta})'
-                    }).execute()
+                if have_stopword:
                     continue
                 else:
                     case_ = Case(
@@ -235,9 +243,9 @@ class Casebook:
                             "caseTypeENG": case['caseType']
                         },
                         sum_=case['claimSum']
-
                     )
                     result.append(case_)
             except GetOutOfLoop:
                 pass
+        print(len(result))
         return result
