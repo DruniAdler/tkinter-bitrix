@@ -165,7 +165,7 @@ class Casebook:
             serialized_page = json.loads(response.data)
             for case in serialized_page['result']['items']:
                 cases.append(case)
-        print(len(cases))
+        print(cases)
         for case in cases:
             if len(case['sides']) > 2:
                 _respondent = 0
@@ -178,6 +178,8 @@ class Casebook:
                         _plaintiff += 1
                     elif side['nSideTypeEnum'] == 'Respondent':
                         _respondent += 1
+                    else:
+                        _other += 1
                 try:
                     if _respondent > 1:
                         supabase.table('processed_cases').insert({
@@ -193,28 +195,26 @@ class Casebook:
                         pass
                     else:
                         print(e.code, e.message)
-            have_stopword = False
+        for case in cases:
             try:
                 for side in case['sides']:
                     from stopwords import stopwords
                     for stopword in stopwords:
-                        if (stopword.upper() in side['name'].upper() and not ('КОМП' in side['name'].upper())
-                                and not ('Индивидуальный предприниматель').upper() in side['name'].upper()) \
-                                and side['typeEnum'] == 'Respondent':
-                            have_stopword = True
-                            try:
-                                supabase.table('processed_cases').insert({
-                                    'processed_date': datetime.datetime.now().date().isoformat(),
-                                    'case_id': case['caseNumber'],
-                                    'is_success': False,
-                                    'error': f'Встретилось стоп-слово, отфильстровано. (PS -> {stopword})'
-                                }).execute()
-                            except APIError as e:
-                                if e.code == '23505':
-                                    pass
-                                else:
-                                    print(e.code, e.message)
-                            raise GetOutOfLoop
+                        if side['nSideTypeEnum'] == 'Plaintiff':
+                            if stopword.upper() in side['name'].upper():
+                                try:
+                                    supabase.table('processed_cases').insert({
+                                        'processed_date': datetime.datetime.now().date().isoformat(),
+                                        'case_id': case['caseNumber'],
+                                        'is_success': False,
+                                        'error': f'Встретилось стоп-слово, отфильстровано. (PS -> {stopword})'
+                                    }).execute()
+                                except APIError as e:
+                                    if e.code == '23505':
+                                        pass
+                                    else:
+                                        print(e.code, e.message)
+                                raise GetOutOfLoop
                     if side['typeEnum'] == "Plaintiff":
                         plaintiff = Side(
                             name=side['name'],
@@ -228,8 +228,6 @@ class Casebook:
                             ogrn=side['ogrn'],
                         )
                     date = datetime.datetime.fromisoformat(case['startDate']).date()
-                if have_stopword:
-                    continue
                 else:
                     case_ = Case(
                         plaintiff=plaintiff,

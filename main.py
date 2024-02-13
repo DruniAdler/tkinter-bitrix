@@ -156,6 +156,7 @@ class App(customtkinter.CTk):
             except json.decoder.JSONDecodeError:
                 self.log('Ошибка авторизации, получение нового токена')
                 self.casebook.headless_auth()
+                cases = self.casebook.get_cases(self.selected_filter['filter'], self.selected_timedelta, self.supabase)
             if cases:
                 self.log('Получаем контакты...')
                 processed_cases = []
@@ -175,10 +176,16 @@ class App(customtkinter.CTk):
                 for case in cases:
                     try:
                         if self.rights:
-                            err = self.bitrix.create_lead(case)
+                            err = self.bitrix.create_lead(case, rights=False)
                         else:
                             err = self.bitrix.create_lead(case, rights=True)
                         if err:
+                            self.supabase.table('processed_cases').insert({
+                                'processed_date': datetime.now().date().isoformat(),
+                                'case_id': case.number,
+                                'is_success': False,
+                                'error': err
+                            }).execute()
                             self.log(f'{case.number} не удалось записать в Б24')
                         else:
                             self.supabase.table('processed_cases').insert({
