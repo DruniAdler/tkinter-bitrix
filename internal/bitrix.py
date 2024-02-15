@@ -129,6 +129,7 @@ class BitrixConnect:
                                               "EMAIL": emails,
                                               "UF_CRM_1703235529": UF_CRM_1703235529,
                                               "UF_CRM_1703234971": UF_CRM_1703234971,
+                                              "UF_CRM_1707995533": case.respondent.inn
                                           }}
                                       )
             return None

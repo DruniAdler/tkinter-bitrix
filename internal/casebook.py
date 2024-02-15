@@ -165,7 +165,6 @@ class Casebook:
             serialized_page = json.loads(response.data)
             for case in serialized_page['result']['items']:
                 cases.append(case)
-        print(cases)
         for case in cases:
             if len(case['sides']) > 2:
                 _respondent = 0
@@ -199,8 +198,8 @@ class Casebook:
             try:
                 for side in case['sides']:
                     from stopwords import stopwords
-                    for stopword in stopwords:
-                        if side['nSideTypeEnum'] == 'Plaintiff':
+                    if side['nSideTypeEnum'] == 'Respondent' or side['nSideTypeEnum'] == 'OtherRespondent':
+                        for stopword in stopwords:
                             if stopword.upper() in side['name'].upper():
                                 try:
                                     supabase.table('processed_cases').insert({

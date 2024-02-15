@@ -9,6 +9,7 @@ import tkinter
 import tkinter.messagebox
 
 import postgrest.exceptions
+from fast_bitrix24.server_response import ErrorInServerResponseException
 from supabase import create_client
 
 from internal.bitrix import BitrixConnect
@@ -180,19 +181,21 @@ class App(customtkinter.CTk):
                         else:
                             err = self.bitrix.create_lead(case, rights=True)
                         if err:
-                            self.supabase.table('processed_cases').insert({
-                                'processed_date': datetime.now().date().isoformat(),
-                                'case_id': case.number,
-                                'is_success': False,
-                                'error': err
-                            }).execute()
-                            self.log(f'{case.number} не удалось записать в Б24')
+                            raise err
                         else:
                             self.supabase.table('processed_cases').insert({
                                 'processed_date': datetime.now().date().isoformat(),
                                 'case_id': case.number,
                                 'is_success': True,
                             }).execute()
+                    except ErrorInServerResponseException as e:
+                        self.supabase.table('processed_cases').insert({
+                            'processed_date': datetime.now().date().isoformat(),
+                            'case_id': case.number,
+                            'is_success': False,
+                            'error': json.dumps(e.__dict__)
+                        }).execute()
+                        self.log(f'{case.number} не удалось записать в Б24')
                     except postgrest.exceptions.APIError as e:
                         print(case.number, ' <-- проконтролировать \n', e)
             else:
