@@ -1,4 +1,5 @@
 import datetime
+import json
 from typing import Tuple, List, Any
 
 import requests
@@ -52,16 +53,48 @@ def remove_duplicates(input_list):
         pass
 
 
-def process_two(ogrn):
-    url2 = "https://checko.ru/company/" + ogrn
+def process_two_phone(ogrn):
+    links_list = []
+    url2 = "https://checko.ru/company/" + ogrn + "?extra=contacts"
     headers = {
         'User-Agent': 'Mozila/5.0(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
     try:
         response_two_0 = requests.get(url2, headers=headers)
         soup2 = BeautifulSoup(response_two_0.text, "html.parser")
-        info_two = soup2.find("div", class_="uk-container uk-container-xlarge x-container").find("section",
-                                                                                                 id="contacts")
-        return info_two.text
+        main_element = soup2.find("main", class_="extra-sidebar-page")
+        if main_element:
+            links = main_element.find_all("a", class_="black-link no-underline")
+            if links:
+                for link in links[:10]:
+                    links_list.append(link["href"][4:])
+                return links_list
+            else:
+                return "Номера не найдены."
+
+        # await process_string(find_phone(info_two.text), number_list)
+        # await process_email_string(find_mail(info_two.text), email_list)
+    except Exception as e:
+        pass
+
+
+def process_two_email(ogrn):
+    links_list = []
+    url2 = "https://checko.ru/company/" + ogrn + "?extra=contacts"
+    headers = {
+        'User-Agent': 'Mozila/5.0(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    try:
+        response_two_0 = requests.get(url2, headers=headers)
+        soup2 = BeautifulSoup(response_two_0.text, "html.parser")
+        main_element = soup2.find("main", class_="extra-sidebar-page")
+        if main_element:
+            links = main_element.find_all("a", class_="link", rel="nofollow")
+            if links:
+                for link in links[1:10]:
+                    links_list.append(link["href"][7:])
+                return links_list
+            else:
+                return "Email не найдены."
+
         # await process_string(find_phone(info_two.text), number_list)
         # await process_email_string(find_mail(info_two.text), email_list)
     except Exception as e:
@@ -106,18 +139,12 @@ def get_contacts(inn, ogrn):
     number_list = []
     email_list = []
 
-    second_res = process_two(ogrn)
     three_res = process_three(ogrn)
     # four_res = process_four(ogrn)
 
-    try:
-        process_string(find_phone(second_res), number_list)
-    except Exception as e:
-        pass
-    try:
-        process_email_string(find_mail(second_res), email_list)
-    except Exception as e:
-        pass
+    number_list.append(process_two_phone(ogrn))
+    email_list.append(process_two_email(ogrn))
+
     try:
         process_string(find_phone(three_res), number_list)
     except Exception as e:
@@ -126,6 +153,37 @@ def get_contacts(inn, ogrn):
         process_email_string(find_mail(three_res), email_list)
     except Exception as e:
         pass
+
+    number_list = list(set(number_list))
+    email_list = list(set(email_list))
+
+    return {'numbers': number_list,
+            'emails': email_list}
+
+
+def get_contacts_via_export_base(key: str, ogrn: str = None, inn: str = None):
+    number_list = []
+    email_list = []
+
+    if ogrn and inn:
+        url = f'https://export-base.ru/api/company/?inn={inn}&ogrn={ogrn}&key={key}'
+    elif ogrn:
+        url = f'https://export-base.ru/api/company/?ogrn={ogrn}&key={key}'
+    else:
+        url = f'https://export-base.ru/api/company/?inn={inn}&key={key}'
+
+    response = requests.get(url)
+
+    result_data = json.loads(response.text)
+    data = result_data['companies_data'][0]
+
+    number_list += data['stationary_phone'].split(',')
+    number_list += data['mobile_phone'].split(',')
+
+    email_list.append(data['email'].split(', ')[0])
+
+    number_list = filter(None, number_list)
+    email_list = filter(None, email_list)
 
     number_list = list(set(number_list))
     email_list = list(set(email_list))

@@ -14,6 +14,7 @@ from supabase import create_client
 
 from internal.bitrix import BitrixConnect
 from internal.casebook import CaseBookCache, Casebook
+from internal.contacts import get_contacts_via_export_base
 
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -69,6 +70,8 @@ class App(customtkinter.CTk):
                 self.bitrix_data = data
             elif data['name'] == 'casebook':
                 self.casebook_data = data
+            elif data['name'] == 'exportbase':
+                self.exportbase_data = data
 
         self.casebook = Casebook(cache=CaseBookCache(login_data=self.casebook_data))
 
@@ -164,14 +167,21 @@ class App(customtkinter.CTk):
                 for case in cases:
                     if not self.supabase.table('processed_cases').select('*').eq('case_id', str(case.number)).execute().data:
                         from internal.contacts import get_contacts
-                        case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
+                        if 'индивидуальный предприниматель'.upper() in case.respondent.name.upper():
+                            case.contacts_info = get_contacts_via_export_base(
+                                ogrn=case.respondent.ogrn,
+                                key=self.exportbase_data['password'])
+                        else:
+                            case.contacts_info = get_contacts(inn=case.respondent.inn, ogrn=case.respondent.ogrn)
                         processed_cases.append(case)
                 cases = processed_cases
                 print(cases)
                 if self.without_contacts_.get() == 0:
                     for case in cases:
                         if case.contacts_info.get('emails') == [] and case.contacts_info.get('numbers') == []:
-                            cases.remove(case)
+                            case.contacts_info = get_contacts_via_export_base(
+                                ogrn=case.respondent.ogrn,
+                                key=self.exportbase_data['password'])
                 self.log('Формируем лиды...')
                 print('лиды')
                 for case in cases:
@@ -193,7 +203,7 @@ class App(customtkinter.CTk):
                             'processed_date': datetime.now().date().isoformat(),
                             'case_id': case.number,
                             'is_success': False,
-                            'error': json.dumps(e.__dict__)
+                            'error': e
                         }).execute()
                         self.log(f'{case.number} не удалось записать в Б24')
                     except postgrest.exceptions.APIError as e:
