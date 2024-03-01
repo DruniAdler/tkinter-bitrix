@@ -2,6 +2,7 @@ import asyncio
 import dataclasses
 import json
 import os
+import time
 from datetime import datetime
 
 import customtkinter
@@ -75,6 +76,8 @@ class App(customtkinter.CTk):
 
         self.casebook = Casebook(cache=CaseBookCache(login_data=self.casebook_data))
 
+        self.day = datetime.now()
+
         self.log("Авторизация Casebook успешно...")
 
         self.bitrix = BitrixConnect(webhook=self.bitrix_data['login'])
@@ -144,7 +147,11 @@ class App(customtkinter.CTk):
             self.start_button.configure(fg_color='red', hover_color='red')
             self.work = True
             self.log('Начало работы... Подготовка...')
-            self.scan()
+            success = self.scan()
+            if not success:
+                self.casebook = Casebook(cache=CaseBookCache(login_data=self.casebook_data))
+                self.scan()
+                success = False
             self.status.set('Стоп')
         elif self.status.get() == 'Стоп':
             self.status.set('Старт')
@@ -153,6 +160,9 @@ class App(customtkinter.CTk):
             self.start_button.configure(fg_color='blue', hover_color='blue')
 
     def scan(self):
+        if self.day != datetime.now():
+            self.casebook = Casebook(cache=CaseBookCache(login_data=self.casebook_data))
+
         if self.work:
             self.log('Начало сканирования...')
             try:
@@ -203,7 +213,7 @@ class App(customtkinter.CTk):
                             'processed_date': datetime.now().date().isoformat(),
                             'case_id': case.number,
                             'is_success': False,
-                            'error': e
+                            'error': f'Ошибка в контактных данных  {case.contacts_info}'
                         }).execute()
                         self.log(f'{case.number} не удалось записать в Б24')
                     except postgrest.exceptions.APIError as e:
@@ -214,7 +224,7 @@ class App(customtkinter.CTk):
             self.log(f'Цикл завершен, задача поставлена в \n очередь через {self.delay.get()} минут')
         else:
             self.after(10000, self.scan)
-        pass
+        return True
 
     def log(self, info):
         self.textbox.configure(state='normal')

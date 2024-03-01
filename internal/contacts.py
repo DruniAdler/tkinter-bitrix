@@ -66,10 +66,9 @@ def process_two_phone(ogrn):
             links = main_element.find_all("a", class_="black-link no-underline")
             if links:
                 for link in links[:10]:
-                    links_list.append(link["href"][4:])
-                return links_list
-            else:
-                return "Номера не найдены."
+                    links_list.append(link["href"][5:])
+            return links_list
+
 
         # await process_string(find_phone(info_two.text), number_list)
         # await process_email_string(find_mail(info_two.text), email_list)
@@ -78,7 +77,8 @@ def process_two_phone(ogrn):
 
 
 def process_two_email(ogrn):
-    links_list = []
+    links_list = list()
+    email_regex = re.compile(r"""^(?!\.)(?![_])(?!.*@.*@)(?!.*\.\.)(?!.*@)(?!.*\.)[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.a-zA-Z0-9\:\?[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$""", re.IGNORECASE)
     url2 = "https://checko.ru/company/" + ogrn + "?extra=contacts"
     headers = {
         'User-Agent': 'Mozila/5.0(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
@@ -90,10 +90,12 @@ def process_two_email(ogrn):
             links = main_element.find_all("a", class_="link", rel="nofollow")
             if links:
                 for link in links[1:10]:
-                    links_list.append(link["href"][7:])
-                return links_list
-            else:
-                return "Email не найдены."
+                    email = link["href"][7:].replace('\xa0', '')
+                    if email_regex.match(email):
+                        links_list.append(email)
+                email = None
+            return links_list
+
 
         # await process_string(find_phone(info_two.text), number_list)
         # await process_email_string(find_mail(info_two.text), email_list)
@@ -139,23 +141,25 @@ def get_contacts(inn, ogrn):
     number_list = []
     email_list = []
 
-    three_res = process_three(ogrn)
+    #three_res = process_three(ogrn)
     # four_res = process_four(ogrn)
-
-    number_list.append(process_two_phone(ogrn))
-    email_list.append(process_two_email(ogrn))
-
     try:
-        process_string(find_phone(three_res), number_list)
+        number_list.extend(process_two_phone(ogrn))
+        email_list.extend(process_two_email(ogrn))
+    except TypeError:
+        print(process_two_phone(ogrn))
+        print(process_two_email(ogrn))
+    try:
+        pass #process_string(find_phone(three_res), number_list)
     except Exception as e:
         pass
     try:
-        process_email_string(find_mail(three_res), email_list)
+       pass # process_email_string(find_mail(three_res), email_list)
     except Exception as e:
         pass
 
-    number_list = list(set(number_list))
-    email_list = list(set(email_list))
+    #number_list = list(set(number_list))
+    #email_list = list(set(email_list))
 
     return {'numbers': number_list,
             'emails': email_list}
@@ -169,16 +173,28 @@ def get_contacts_via_export_base(key: str, ogrn: str = None, inn: str = None):
         url = f'https://export-base.ru/api/company/?inn={inn}&ogrn={ogrn}&key={key}'
     elif ogrn:
         url = f'https://export-base.ru/api/company/?ogrn={ogrn}&key={key}'
-    else:
+    elif inn:
         url = f'https://export-base.ru/api/company/?inn={inn}&key={key}'
-
+    else:
+        return {'numbers': number_list,
+                            'emails': email_list}
     response = requests.get(url)
 
     result_data = json.loads(response.text)
-    data = result_data['companies_data'][0]
+    print(result_data)
+    try:
+        data = result_data['companies_data'][0]
+    except IndexError as e:
+        return get_contacts(ogrn=ogrn, inn=inn)
+    number_list += data['stationary_phone'].split(', +')
+    number_list += data['mobile_phone'].split(', +')
 
-    number_list += data['stationary_phone'].split(',')
-    number_list += data['mobile_phone'].split(',')
+    valid_numbers = []
+
+    for number in number_list:
+        valid_numbers.append(number[:17])
+
+    number_list = valid_numbers
 
     email_list.append(data['email'].split(', ')[0])
 
